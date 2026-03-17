@@ -10,11 +10,22 @@ Sisipkan clue secara tersirat dan puitis, bukan langsung.`;
 
 class AINarrator {
   constructor() {
-    this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this._client = null;
+  }
+
+  _getClient() {
+    if (!this._client) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY belum di-set di environment variables.');
+      }
+      this._client = new OpenAI({ apiKey });
+    }
+    return this._client;
   }
 
   async _call(userPrompt, maxTokens = 350) {
-    const response = await this.client.chat.completions.create({
+    const response = await this._getClient().chat.completions.create({
       model: 'gpt-4o-mini',
       max_tokens: maxTokens,
       temperature: 0.85,
