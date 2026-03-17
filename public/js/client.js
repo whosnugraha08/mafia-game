@@ -28,8 +28,66 @@ const state = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SOCKET SETUP
+//  VOICE NARRATOR (Web Speech API — free, built-in browser)
 // ─────────────────────────────────────────────────────────────────────────────
+const voice = {
+  enabled: false,
+  synth:   window.speechSynthesis,
+
+  _getVoice() {
+    const voices = this.synth.getVoices();
+    return voices.find(v => v.lang.startsWith('id'))
+        || voices.find(v => v.lang.startsWith('en') && v.localService)
+        || null;
+  },
+
+  speak(text) {
+    if (!this.enabled || !text) return;
+    this.synth.cancel();
+    const utt    = new SpeechSynthesisUtterance(text);
+    utt.lang     = 'id-ID';
+    utt.rate     = 0.85;
+    utt.pitch    = 0.8;
+    utt.volume   = 0.95;
+    const v = this._getVoice();
+    if (v) utt.voice = v;
+    this.synth.speak(utt);
+  },
+
+  stop() { this.synth.cancel(); },
+
+  toggle() {
+    this.enabled = !this.enabled;
+    if (!this.enabled) this.stop();
+    const btn = document.getElementById('btn-voice-toggle');
+    if (btn) {
+      btn.textContent = this.enabled ? '🔊 Suara Aktif' : '🔇 Suara Mati';
+      btn.classList.toggle('active', this.enabled);
+    }
+    return this.enabled;
+  }
+};
+
+// Load voices async (required in some browsers)
+if (window.speechSynthesis.onvoiceschanged !== undefined) {
+  window.speechSynthesis.onvoiceschanged = () => {};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TYPEWRITER EFFECT
+// ─────────────────────────────────────────────────────────────────────────────
+function typewrite(el, text, charsPerTick = 3, tickMs = 18) {
+  el.textContent = '';
+  let i = 0;
+  const timer = setInterval(() => {
+    const chunk = text.slice(i, i + charsPerTick);
+    el.textContent += chunk;
+    i += charsPerTick;
+    if (i >= text.length) clearInterval(timer);
+  }, tickMs);
+}
+
+
 const socket = io({ transports: ['websocket', 'polling'] });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,6 +236,7 @@ socket.on('phase_change', ({ phase, round, message }) => {
 socket.on('narrator_text', ({ text }) => {
   const el = document.getElementById('intro-text');
   if (el) el.textContent = text;
+  voice.speak(text);
 });
 
 socket.on('skip_vote_update', ({ voted, total }) => {
@@ -230,7 +289,9 @@ socket.on('morning_result', ({ narrative, outcome, deadPlayerId, deadPlayerName,
   state.round      = round;
   state.playerList = playerList;
 
-  document.getElementById('morning-narrative').textContent = narrative;
+  const narrativeEl = document.getElementById('morning-narrative');
+  typewrite(narrativeEl, narrative);
+  voice.speak(narrative);
 
   // Sync our alive status
   const self = playerList.find(p => p.id === state.playerId);
@@ -955,6 +1016,19 @@ function renderGameOver({ winner, impostorId, impostorName, protectorId, protect
 // ─────────────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  // ── Voice toggle ─────────────────────────────────────────────────────────
+  const voiceBtn = document.getElementById('btn-voice-toggle');
+  if (voiceBtn) {
+    voiceBtn.addEventListener('click', () => {
+      voice.toggle();
+      // If just enabled, re-speak current intro text if available
+      if (voice.enabled) {
+        const introText = document.getElementById('intro-text')?.textContent;
+        if (introText && introText.length > 20) voice.speak(introText);
+      }
+    });
+  }
 
   // ── Join ──────────────────────────────────────────────────────────────────
   const joinInput = document.getElementById('name-input');

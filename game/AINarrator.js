@@ -38,11 +38,26 @@ class AINarrator {
   }
 
   async generateIntro(playerCount) {
-    const prompt = `Buatkan narasi pembuka game untuk ${playerCount} pemain.
-Ceritakan suasana desa kecil yang terisolir, di mana seseorang menyimpan niat gelap.
-Para penduduk (pemain) harus bersatu mencari pengkhianat sebelum semuanya terlambat.
-Akhiri dengan kalimat yang meminta semua "pemain" untuk bersiap.`;
-    return this._call(prompt, 300);
+    const prompt = `Kamu adalah narator misterius untuk game deduksi sosial dengan ${playerCount} pemain. Buat narasi pembuka yang SEKALIGUS berfungsi sebagai panduan game lengkap — dikemas seluruhnya dalam bahasa dramatis, puitis, dan mencekam. Bahasa Indonesia. Jangan gunakan bullet point atau daftar — narasikan segalanya seperti seorang dalang yang menuturkan takdir.
+
+STRUKTUR (tanpa header, semua jadi prosa mengalir, pisah dengan baris kosong):
+
+PARAGRAF 1-2 — KISAH PEMBUKA: Gambarkan desa kecil terpencil di malam kelam. Seseorang di antara warga menyimpan niat berdarah. Para warga harus menemukan pengkhianat sebelum semuanya hancur.
+
+PARAGRAF 3 — PERAN SANG IMPOSTOR: Ceritakan secara dramatis bahwa satu jiwa gelap di antara kalian adalah Sang Impostor — ia bangun di malam hari, memilih satu korban beserta senjata dan jejak yang akan ditinggalkannya. Di ronde pertama, ia bisa memilih merekrut seseorang menjadi sekutunya daripada membunuh. Impostor menang bila bertahan tiga ronde, atau bila hanya tersisa dua orang hidup.
+
+PARAGRAF 4 — PERAN SANG PELINDUNG: Satu jiwa lain dipilih takdir sebagai Pelindung — ia bangun setelah impostor tidur kembali, dan memilih satu orang untuk diselamatkan malam itu. Ia boleh melindungi dirinya sendiri.
+
+PARAGRAF 5 — PERAN PARA DETEKTIF: Sisanya adalah warga biasa, para Detektif — mereka tidak bangun malam. Senjata mereka adalah kecerdasan dan diskusi. Setiap detektif hanya punya satu kesempatan menuduh sepanjang game. Tuduhan harus menyebut nama tersangka, satu kartu senjata, dan satu kartu jejak yang diyakini digunakan. Jika tuduhan salah, sang detektif langsung tereliminasi.
+
+PARAGRAF 6 — SISTEM KARTU & CLUE: Setiap pemain memegang enam kartu (tiga senjata dan tiga jejak), semuanya terbuka untuk dilihat semua orang. Clue tersembunyi ada di narasi pagi hari — narator akan bercerita secara tersirat, dan dari sanalah para detektif harus menyimpulkan.
+
+PARAGRAF 7 — ALUR PERMAINAN: Narasikan alur: Malam tiba → Impostor beraksi → Pelindung berjaga → Pagi datang → Narator menuturkan kejadian dengan clue tersembunyi → Siang → Diskusi dan tuduhan → Bila tak ada yang benar, malam kembali datang. Ini bisa terjadi hingga tiga ronde.
+
+PARAGRAF 8 — SERUAN PENUTUP: Satu kalimat dramatis yang menyerukan semua pemain untuk bersiap. Game dimulai.
+
+Total: maksimal 8 paragraf singkat-sedang. Buat setiap kata terasa berat dan penuh misteri.`;
+    return this._call(prompt, 1000);
   }
 
   async generateMorningNarrative({ outcome, targetName, weapon, trace, round }) {

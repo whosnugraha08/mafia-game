@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🎭 Deduksi — Social Deduction Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
@@ -36,9 +39,11 @@
 ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="screen-join" class="screen active">
   <div class="join-box">
-    <h1>🔪 Deduksi</h1>
-    <p class="tagline">Game Deduksi Sosial Multiplayer<br/>dengan Narasi AI</p>
-    <input id="name-input" type="text" placeholder="Masukkan namamu..." maxlength="20" autocomplete="off" />
+    <span class="join-logo">🔪</span>
+    <h1>Deduksi</h1>
+    <div class="join-divider"></div>
+    <p class="join-tagline">Game Deduksi Sosial Multiplayer<br/>dengan Narasi AI</p>
+    <input id="name-input" type="text" placeholder="Masukkan nama pemain..." maxlength="20" autocomplete="off" />
     <button id="btn-join" class="btn-primary">Masuk ke Lobby</button>
   </div>
 </div>
@@ -100,10 +105,14 @@
 ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="screen-intro" class="screen">
   <div class="intro-inner">
-    <h2>📖 Kisah Pembuka</h2>
+    <p class="intro-title">Kisah Pembuka</p>
+    <span class="intro-ornament">✦ ✦ ✦</span>
     <div id="intro-text"></div>
+    <div class="intro-controls">
+      <button id="btn-skip-intro" class="btn-ghost btn-sm">⏩ Vote Skip</button>
+      <button id="btn-voice-toggle" class="voice-btn">🔇 Suara Mati</button>
+    </div>
     <p id="skip-info" class="skip-info">Menunggu vote skip...</p>
-    <button id="btn-skip-intro" class="btn-ghost">⏩ Vote Skip Intro</button>
   </div>
 </div>
 
