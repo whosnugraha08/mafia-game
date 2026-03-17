@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎭 Deduksi — Social Deduction Game</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BLACK OVERLAY  (rendered on top via z-index:500)
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="black-overlay">
+  <p id="black-message">Malam tiba... Semua tutup mata.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     ACCUSATION BANNER  (top toast, z-index:800)
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="accusation-banner"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     NOTIFICATION OVERLAY  (modal popup, z-index:900)
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="notification-overlay">
+  <div id="notif-box" class="notif-box">
+    <div id="notif-icon" class="notif-icon"></div>
+    <div id="notif-message" class="notif-message"></div>
+    <button id="btn-dismiss-notif" class="btn-primary">OK</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 1: JOIN
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-join" class="screen active">
+  <div class="join-box">
+    <h1>🔪 Deduksi</h1>
+    <p class="tagline">Game Deduksi Sosial Multiplayer<br/>dengan Narasi AI</p>
+    <input id="name-input" type="text" placeholder="Masukkan namamu..." maxlength="20" autocomplete="off" />
+    <button id="btn-join" class="btn-primary">Masuk ke Lobby</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 2: LOBBY
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+      <div>
+        <h2 style="margin-bottom:4px;">🏠 Ruang Tunggu</h2>
+        <p class="subtitle">Sambil menunggu, siapkan Discord untuk komunikasi suara!</p>
+      </div>
+      <button id="btn-ready" class="btn-primary" style="min-width:140px;">Siap!</button>
+    </div>
+
+    <div class="lobby-grid">
+      <!-- Left: player list -->
+      <div class="panel">
+        <h3>👥 Pemain</h3>
+        <div id="lobby-player-list"></div>
+        <p id="lobby-req" class="dim text-sm mt-8">Memuat...</p>
+      </div>
+
+      <!-- Right: settings + info -->
+      <div>
+        <!-- Host config -->
+        <div id="host-config" class="panel hidden">
+          <h3>⚙️ Pengaturan (Host)</h3>
+          <div class="host-config mt-8">
+            <label>
+              ⏱️ Durasi Diskusi Siang:
+              <input type="number" id="day-timer-input" value="120" min="30" max="600" style="width:80px;" />
+              detik
+            </label>
+          </div>
+          <p id="lobby-timer-display" class="dim text-sm mt-8">Durasi diskusi: 120 detik</p>
+        </div>
+
+        <!-- Game rules -->
+        <div class="panel">
+          <h3>📜 Aturan Singkat</h3>
+          <ul style="color:var(--text-muted);font-size:.85rem;line-height:1.9;padding-left:18px;">
+            <li>1 Impostor, 1 Protector, sisa Detektif</li>
+            <li>Semua kartu terbuka — deduksi dari clue AI!</li>
+            <li>Detektif hanya punya <strong style="color:var(--red)">1 kesempatan</strong> menuduh</li>
+            <li>Impostor menang jika bertahan 3 ronde</li>
+            <li>Butuh minimal <strong>4 pemain</strong> untuk mulai</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 3: INTRO NARASI
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-intro" class="screen">
+  <div class="intro-inner">
+    <h2>📖 Kisah Pembuka</h2>
+    <div id="intro-text"></div>
+    <p id="skip-info" class="skip-info">Menunggu vote skip...</p>
+    <button id="btn-skip-intro" class="btn-ghost">⏩ Vote Skip Intro</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 4: ROLE REVEAL
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-role-reveal" class="screen">
+  <div>
+    <div id="role-box" class="role-box">
+      <div id="role-icon" class="role-icon"></div>
+      <div id="role-name" class="role-name"></div>
+      <div id="role-desc" class="role-desc"></div>
+      <div id="my-cards-preview" class="my-cards-preview"></div>
+      <button id="btn-role-proceed" class="btn-primary" style="width:100%;padding:13px;">Mengerti, Lanjutkan →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 5: IMPOSTOR ACTION (night)
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-impostor-action" class="screen">
+  <div class="container">
+    <div style="margin-bottom:20px;">
+      <h2 style="color:var(--red);">🎭 Giliranmu, Impostor</h2>
+      <p class="dim">Ronde <span id="imp-round">1</span> — Semua yang lain sedang tertidur.</p>
+    </div>
+
+    <div class="action-grid">
+      <!-- Targets -->
+      <div class="panel panel-red">
+        <h3>🎯 Pilih Target</h3>
+        <div id="imp-target-list"></div>
+      </div>
+
+      <!-- Cards -->
+      <div>
+        <div class="panel">
+          <h3>🗡️ Pilih Senjata</h3>
+          <div id="imp-weapon-list" class="card-select-row"></div>
+        </div>
+        <div class="panel">
+          <h3>👣 Pilih Jejak</h3>
+          <div id="imp-trace-list" class="card-select-row"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;">
+      <div id="imp-summary" class="selection-summary">
+        <span class="dim">Pilih target dan kartumu...</span>
+      </div>
+    </div>
+
+    <div id="imp-action-buttons" class="action-buttons-row"></div>
+
+    <p class="dim text-sm mt-16" style="text-align:center;">
+      ⚠️ Kartu bergaris adalah kartu yang sudah pernah dipakai di ronde sebelumnya.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 6: PROTECTOR ACTION (night)
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-protector-action" class="screen">
+  <div class="container">
+    <div style="margin-bottom:24px;">
+      <h2 style="color:#5b9bd5;">🛡️ Giliranmu, Protector</h2>
+      <p class="dim">Pilih satu orang untuk dilindungi malam ini. Kamu boleh melindungi dirimu sendiri.</p>
+    </div>
+
+    <div class="panel" style="max-width:500px;">
+      <h3>👥 Pilih yang Dilindungi</h3>
+      <div id="prot-target-list"></div>
+      <div style="margin-top:16px;">
+        <button id="btn-protect" class="btn-primary" disabled style="width:100%;padding:13px;">
+          🛡️ Lindungi
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 7: MORNING NARRATIVE
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-morning" class="screen">
+  <div class="morning-inner">
+    <h2>🌅 Pagi Hari — Ronde <span id="morning-round">1</span></h2>
+    <div id="morning-narrative"></div>
+
+    <div>
+      <h4 style="margin-bottom:8px;">Status Pemain</h4>
+      <div id="morning-status-grid" class="morning-status-grid"></div>
+    </div>
+
+    <p class="dim text-sm mt-16" style="text-align:center;">
+      ⏳ Diskusi akan dimulai dalam beberapa saat...
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 8: DAY — Discussion & Accusation
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-day" class="screen">
+  <div class="container">
+
+    <!-- Day header -->
+    <div class="day-header">
+      <div>
+        <h2 style="margin-bottom:2px;">☀️ Siang Hari — Ronde <span id="day-round">1</span></h2>
+        <p class="subtitle">Diskusi via Discord. Klik kartu pemain untuk menuduh.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="spectator-badge" class="spectator-badge hidden">👁️ Penonton</span>
+        <div class="day-timer-box" id="day-timer">--:--</div>
+      </div>
+    </div>
+
+    <!-- Accusation hint -->
+    <p id="accusation-hint" class="dim text-sm mb-16"></p>
+
+    <!-- All players' cards grid -->
+    <div id="cards-grid" class="cards-grid"></div>
+
+    <!-- Accusation form (shown on card click) -->
+    <div id="accusation-panel" class="hidden"></div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCREEN 9: GAME OVER
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="screen-gameover" class="screen">
+  <div class="gameover-hero">
+    <div id="gameover-title" class="winner-title"></div>
+    <p class="subtitle mt-8">Game selesai!</p>
+  </div>
+
+  <div class="container">
+
+    <!-- Role reveals -->
+    <h3 style="text-align:center;margin-bottom:14px;">🎭 Identitas Semua Pemain</h3>
+    <div id="go-roles" class="go-grid"></div>
+
+    <!-- Final player status -->
+    <h3 style="text-align:center;margin-bottom:14px;margin-top:8px;">👥 Status Akhir</h3>
+    <div id="go-players" style="max-width:700px;margin:0 auto 28px;"></div>
+
+    <!-- History -->
+    <div class="history-log">
+      <h3>📜 Riwayat Game</h3>
+      <div id="go-history"></div>
+    </div>
+
+    <!-- Play again -->
+    <div class="play-again-section">
+      <p id="play-again-vote-info"></p>
+      <button id="btn-play-again" class="btn-primary" style="padding:13px 32px;font-size:1rem;">
+        🔄 Main Lagi
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════════════════════════ -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/client.js"></script>
+
+</body>
+</html>
