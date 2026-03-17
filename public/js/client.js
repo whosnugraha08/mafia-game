@@ -4,27 +4,23 @@
 //  CLIENT STATE
 // ─────────────────────────────────────────────────────────────────────────────
 const state = {
-  playerId:       null,
-  playerName:     null,
-  role:           null,       // 'impostor' | 'protector' | 'detective' | 'recruit'
-  myCards:        null,       // { weapons:[], traces:[] }
-  allCards:       {},         // { [playerId]: { weapons:[], traces:[] } }
-  playerList:     [],         // PublicPlayer[]
-  phase:          'join',
-  isAlive:        true,
-  isSpectator:    false,
-  hasGuessed:     false,
-  usedCards:      [],         // only populated for impostor role
-  round:          0,
-  timerInterval:  null,
-  timerSeconds:   0,
-  isHost:         false,
-  // Accusation UI state
-  accusation: {
-    accusedId: null,
-    weapon:    null,
-    trace:     null
-  }
+  playerId:         null,
+  playerName:       null,
+  role:             null,
+  myCards:          null,
+  allCards:         {},
+  playerList:       [],
+  phase:            'join',
+  isAlive:          true,
+  isSpectator:      false,
+  hasGuessed:       false,
+  usedCards:        [],
+  round:            0,
+  timerInterval:    null,
+  timerSeconds:     0,
+  isHost:           false,
+  morningNarrative: '',       // ← kept for clue scroll on day screen
+  accusation: { accusedId: null, weapon: null, trace: null }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -286,21 +282,17 @@ socket.on('action_error', ({ message }) => {
 // ── MORNING ───────────────────────────────────────────────────────────────────
 
 socket.on('morning_result', ({ narrative, outcome, deadPlayerId, deadPlayerName, round, playerList }) => {
-  state.round      = round;
-  state.playerList = playerList;
+  state.round            = round;
+  state.playerList       = playerList;
+  state.morningNarrative = narrative;   // ← store for day screen
 
   const narrativeEl = document.getElementById('morning-narrative');
-  typewrite(narrativeEl, narrative);
+  if (narrativeEl) typewrite(narrativeEl, narrative);
   voice.speak(narrative);
 
-  // Sync our alive status
   const self = playerList.find(p => p.id === state.playerId);
-  if (self) {
-    state.isAlive    = self.isAlive;
-    state.isSpectator = self.isSpectator;
-  }
+  if (self) { state.isAlive = self.isAlive; state.isSpectator = self.isSpectator; }
 
-  // Render player status
   renderMorningStatus(playerList, deadPlayerId);
 });
 
@@ -421,17 +413,18 @@ socket.on('play_again_vote', ({ voted, total, threshold }) => {
 
 socket.on('lobby_reset', ({ players, hostId, dayTimerDuration }) => {
   // Reset client state
-  state.role       = null;
-  state.myCards    = null;
-  state.allCards   = {};
-  state.isAlive    = true;
-  state.isSpectator = false;
-  state.hasGuessed = false;
-  state.usedCards  = [];
-  state.round      = 0;
-  state.phase      = 'lobby';
-  state.accusation = { accusedId: null, weapon: null, trace: null };
-  state.isHost     = (state.playerId === hostId);
+  state.role             = null;
+  state.myCards          = null;
+  state.allCards         = {};
+  state.isAlive          = true;
+  state.isSpectator      = false;
+  state.hasGuessed       = false;
+  state.usedCards        = [];
+  state.round            = 0;
+  state.phase            = 'lobby';
+  state.accusation       = { accusedId: null, weapon: null, trace: null };
+  state.morningNarrative = '';
+  state.isHost           = (state.playerId === hostId);
   state.dayTimerDuration = dayTimerDuration;
 
   stopDayTimer();
@@ -725,13 +718,49 @@ function renderMorningStatus(playerList, newDeadId) {
 function renderDayScreen(timerDuration) {
   document.getElementById('day-round').textContent = state.round;
 
-  // Spectator indicator
   const specBadge = document.getElementById('spectator-badge');
   if (specBadge) specBadge.classList.toggle('hidden', !state.isSpectator);
+
+  // Show clue scroll with morning narrative
+  renderClueScroll();
 
   renderCardsGrid();
   updateAccusationPanelAccess();
   closeAccusationForm();
+}
+
+function renderClueScroll() {
+  const scroll = document.getElementById('day-clue-scroll');
+  const textEl  = document.getElementById('clue-scroll-text');
+  if (!scroll || !textEl) return;
+
+  if (!state.morningNarrative) { scroll.classList.add('hidden'); return; }
+
+  scroll.classList.remove('hidden');
+  textEl.textContent = state.morningNarrative;
+  // Start collapsed
+  textEl.classList.remove('expanded');
+  const body = document.getElementById('clue-scroll-body');
+  if (body) body.classList.add('collapsed');
+  const fade = document.getElementById('clue-scroll-fade');
+  if (fade) fade.classList.remove('hidden');
+  const lbl = document.getElementById('clue-toggle-label');
+  if (lbl) lbl.textContent = '▼ Tampilkan';
+}
+
+function toggleClueScroll() {
+  const body = document.getElementById('clue-scroll-body');
+  const textEl = document.getElementById('clue-scroll-text');
+  const fade   = document.getElementById('clue-scroll-fade');
+  const lbl    = document.getElementById('clue-toggle-label');
+  if (!body) return;
+
+  const isCollapsed = body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', !isCollapsed);
+  body.classList.toggle('expanded',   isCollapsed);
+  if (textEl) textEl.classList.toggle('expanded', isCollapsed);
+  if (fade)   fade.classList.toggle('hidden', isCollapsed);
+  if (lbl)    lbl.textContent = isCollapsed ? '▲ Sembunyikan' : '▼ Tampilkan';
 }
 
 function renderCardsGrid() {
@@ -739,60 +768,76 @@ function renderCardsGrid() {
   if (!grid) return;
   grid.innerHTML = '';
 
-  // Sort: alive first
   const sorted = [...state.playerList].sort((a, b) => (b.isAlive ? 1 : 0) - (a.isAlive ? 1 : 0));
 
   sorted.forEach(player => {
-    const cards = state.allCards[player.id];
+    const cards    = state.allCards[player.id];
     if (!cards) return;
 
-    const block = document.createElement('div');
-    const isSelf        = player.id === state.playerId;
-    const canAccuse     = !state.isSpectator && state.isAlive && !state.hasGuessed &&
-                           player.id !== state.playerId && player.isAlive &&
-                           state.phase === 'day';
+    const isSelf   = player.id === state.playerId;
+    const canAccuse = !state.isSpectator && state.isAlive && !state.hasGuessed &&
+                      !isSelf && player.isAlive && state.phase === 'day';
 
-    block.className = [
-      'player-card-block',
-      !player.isAlive ? 'dead' : '',
-      isSelf          ? 'self' : '',
+    const seat = document.createElement('div');
+    seat.className = [
+      'table-seat',
+      !player.isAlive ? 'dead'      : '',
+      isSelf          ? 'self'      : '',
       canAccuse       ? 'clickable' : ''
-    ].join(' ').trim();
+    ].filter(Boolean).join(' ');
 
     if (canAccuse) {
-      block.title   = `Klik untuk menuduh ${player.name}`;
-      block.onclick = () => openAccusationForm(player);
+      seat.title   = `Klik untuk menuduh ${player.name}`;
+      seat.onclick = () => openAccusationForm(player);
     }
 
-    // Name row
-    let nameHtml = `<div class="pcb-name">
-      ${escHtml(player.name)}
-      ${isSelf ? '<span class="you-tag">Kamu</span>' : ''}
-      ${!player.isAlive ? '💀' : ''}
-      ${player.hasGuessed && player.isAlive ? '<span class="you-tag" style="background:#2a1a0d;color:#e8a070;">Sudah Tuduh</span>' : ''}
+    // Name plate
+    const deadTag   = !player.isAlive ? `<span class="seat-tag dead">💀 Tewas</span>` : '';
+    const youTag    = isSelf           ? `<span class="seat-tag you">Kamu</span>` : '';
+    const votedTag  = player.hasGuessed && player.isAlive
+                        ? `<span class="seat-tag voted">Sudah Tuduh</span>` : '';
+    const accuseHint = canAccuse ? `<span style="font-size:.6rem;color:var(--text-dim);opacity:.55;margin-left:auto;font-family:var(--ff-title);letter-spacing:.07em;">KLIK TUDUH</span>` : '';
+
+    const nameplate = `<div class="seat-nameplate">
+      <span class="seat-name">${escHtml(player.name)}</span>
+      ${youTag}${deadTag}${votedTag}${accuseHint}
     </div>`;
 
-    // Weapons row
-    let wHtml = '<div class="card-row">';
-    cards.weapons.forEach(w => {
-      // Grey out only if: this is the impostor's own card block, AND player is the impostor, AND card was used
+    // Physical cards
+    const weaponCards = cards.weapons.map(w => {
       const isUsed = isSelf && state.role === 'impostor' && state.usedCards.includes(w);
-      wHtml += `<span class="game-card weapon ${isUsed ? 'used' : ''}" title="${isUsed ? '(dipakai)' : ''}">${escHtml(w)}</span>`;
-    });
-    wHtml += '</div>';
+      return buildPhyCard('weapon', w, isUsed);
+    }).join('');
 
-    // Traces row
-    let tHtml = '<div class="card-row">';
-    cards.traces.forEach(t => {
+    const traceCards = cards.traces.map(t => {
       const isUsed = isSelf && state.role === 'impostor' && state.usedCards.includes(t);
-      tHtml += `<span class="game-card trace ${isUsed ? 'used' : ''}" title="${isUsed ? '(dipakai)' : ''}">${escHtml(t)}</span>`;
-    });
-    tHtml += '</div>';
+      return buildPhyCard('trace', t, isUsed);
+    }).join('');
 
-    block.innerHTML = nameHtml + wHtml + tHtml;
-    grid.appendChild(block);
+    const cardTray = `<div class="seat-cards">
+      <span class="seat-row-label">⚔ Senjata</span>
+      <div class="seat-card-row">${weaponCards}</div>
+      <span class="seat-row-label" style="margin-top:6px;">🔍 Jejak</span>
+      <div class="seat-card-row">${traceCards}</div>
+    </div>`;
+
+    seat.innerHTML = nameplate + cardTray;
+    grid.appendChild(seat);
   });
 }
+
+// Build a physical playing-card HTML string
+function buildPhyCard(type, name, isUsed = false) {
+  const icon  = type === 'weapon' ? '⚔' : '🔍';
+  const usedCls = isUsed ? ' used' : '';
+  return `<div class="phy-card ${type}${usedCls}" title="${escHtml(name)}">
+    <span class="card-corner">${icon}</span>
+    <span class="card-icon">${icon}</span>
+    <span class="card-name">${escHtml(name)}</span>
+    <span class="card-corner-br">${icon}</span>
+  </div>`;
+}
+
 
 function updateAccusationPanelAccess() {
   const hint = document.getElementById('accusation-hint');
@@ -826,28 +871,42 @@ function openAccusationForm(targetPlayer) {
   panel.classList.remove('hidden');
   panel.innerHTML = `
     <h3>🎯 Menuduh: ${escHtml(targetPlayer.name)}</h3>
-    <p class="text-sm text-muted mb-16">Pilih senjata DAN jejak yang kamu yakini digunakan pelaku. Jika salah, kamu akan tereliminasi!</p>
+    <p class="text-sm dim mb-16" style="font-family:var(--ff-serif);font-size:.95rem;line-height:1.75;">Pilih <strong>satu senjata</strong> dan <strong>satu jejak</strong> yang kamu yakini digunakan. Jika salah → kamu tereliminasi!</p>
 
     <div class="acc-section">
-      <label>🗡️ Pilih Senjata</label>
-      <div id="acc-weapons-row">
+      <label>⚔ Pilih Senjata</label>
+      <div class="acc-phy-row" id="acc-weapons-row">
         ${cards.weapons.map(w =>
-          `<button class="acc-card-btn weapon" data-card="${escHtml(w)}" onclick="selectAccCard('weapon','${escHtml(w)}',this)">${escHtml(w)}</button>`
+          `<div class="phy-card weapon selectable" data-card="${escHtml(w)}" data-type="weapon"
+               onclick="selectAccPhyCard('weapon','${escHtml(w)}',this)"
+               title="${escHtml(w)}">
+            <span class="card-corner">⚔</span>
+            <span class="card-icon">⚔</span>
+            <span class="card-name">${escHtml(w)}</span>
+            <span class="card-corner-br">⚔</span>
+          </div>`
         ).join('')}
       </div>
     </div>
 
     <div class="acc-section">
-      <label>👣 Pilih Jejak</label>
-      <div id="acc-traces-row">
+      <label>🔍 Pilih Jejak</label>
+      <div class="acc-phy-row" id="acc-traces-row">
         ${cards.traces.map(t =>
-          `<button class="acc-card-btn trace" data-card="${escHtml(t)}" onclick="selectAccCard('trace','${escHtml(t)}',this)">${escHtml(t)}</button>`
+          `<div class="phy-card trace selectable" data-card="${escHtml(t)}" data-type="trace"
+               onclick="selectAccPhyCard('trace','${escHtml(t)}',this)"
+               title="${escHtml(t)}">
+            <span class="card-corner">🔍</span>
+            <span class="card-icon">🔍</span>
+            <span class="card-name">${escHtml(t)}</span>
+            <span class="card-corner-br">🔍</span>
+          </div>`
         ).join('')}
       </div>
     </div>
 
     <div id="acc-confirm-row" class="hidden mt-16">
-      <p class="text-sm mb-8" style="color:var(--red)">⚠️ Yakin menuduh <strong>${escHtml(targetPlayer.name)}</strong>? Ini tidak bisa dibatalkan!</p>
+      <p class="text-sm mb-8" style="color:var(--red);font-family:var(--ff-serif);">⚠️ Yakin menuduh <strong>${escHtml(targetPlayer.name)}</strong>? Ini tidak bisa dibatalkan!</p>
     </div>
 
     <div class="acc-actions">
@@ -862,26 +921,26 @@ function openAccusationForm(targetPlayer) {
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function selectAccCard(type, card, btn) {
+function selectAccPhyCard(type, card, el) {
   if (type === 'weapon') {
-    document.querySelectorAll('#acc-weapons-row .acc-card-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('#acc-weapons-row .phy-card').forEach(c => c.classList.remove('selected'));
     state.accusation.weapon = card;
   } else {
-    document.querySelectorAll('#acc-traces-row .acc-card-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('#acc-traces-row .phy-card').forEach(c => c.classList.remove('selected'));
     state.accusation.trace = card;
   }
-  btn.classList.add('selected');
+  el.classList.add('selected');
 
-  // Enable submit when both selected
   const submitBtn = document.getElementById('btn-submit-acc');
   if (submitBtn) {
     const ready = state.accusation.weapon && state.accusation.trace;
     submitBtn.disabled = !ready;
-    if (ready) {
-      document.getElementById('acc-confirm-row')?.classList.remove('hidden');
-    }
+    if (ready) document.getElementById('acc-confirm-row')?.classList.remove('hidden');
   }
 }
+
+// Legacy alias kept for safety
+function selectAccCard(type, card, btn) { selectAccPhyCard(type, card, btn); }
 
 function submitAccusation(accusedId) {
   const { weapon, trace } = state.accusation;

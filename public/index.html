@@ -105,9 +105,12 @@
 ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="screen-intro" class="screen">
   <div class="intro-inner">
-    <p class="intro-title">Kisah Pembuka</p>
+    <p class="intro-title">Kisah &amp; Panduan Pembuka</p>
     <span class="intro-ornament">✦ ✦ ✦</span>
-    <div id="intro-text"></div>
+    <div class="intro-scroll">
+      <span class="intro-quote-mark">"</span>
+      <div id="intro-text">⏳ Narator mempersiapkan kisah...</div>
+    </div>
     <div class="intro-controls">
       <button id="btn-skip-intro" class="btn-ghost btn-sm">⏩ Vote Skip</button>
       <button id="btn-voice-toggle" class="voice-btn">🔇 Suara Mati</button>
@@ -203,10 +206,14 @@
 <div id="screen-morning" class="screen">
   <div class="morning-inner">
     <h2>🌅 Pagi Hari — Ronde <span id="morning-round">1</span></h2>
-    <div id="morning-narrative"></div>
+
+    <div class="narrative-scroll">
+      <span class="quote-mark">"</span>
+      <div class="narrative-text" id="morning-narrative">⏳ Narator menyusun berita pagi...</div>
+    </div>
 
     <div>
-      <h4 style="margin-bottom:8px;">Status Pemain</h4>
+      <h4>Status Pemain</h4>
       <div id="morning-status-grid" class="morning-status-grid"></div>
     </div>
 
@@ -226,7 +233,7 @@
     <div class="day-header">
       <div>
         <h2 style="margin-bottom:2px;">☀️ Siang Hari — Ronde <span id="day-round">1</span></h2>
-        <p class="subtitle">Diskusi via Discord. Klik kartu pemain untuk menuduh.</p>
+        <p class="subtitle">Diskusi via Discord. Klik area pemain untuk menuduh.</p>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <span id="spectator-badge" class="spectator-badge hidden">👁️ Penonton</span>
@@ -234,13 +241,25 @@
       </div>
     </div>
 
+    <!-- Clue scroll — morning narrative stays visible -->
+    <div id="day-clue-scroll" class="day-clue-scroll hidden" onclick="toggleClueScroll()">
+      <div class="clue-scroll-header">
+        <span class="clue-tag">Catatan Pagi — Clue Narator</span>
+        <span class="clue-scroll-toggle" id="clue-toggle-label">▼ Tampilkan</span>
+      </div>
+      <div class="clue-scroll-body collapsed" id="clue-scroll-body">
+        <div class="clue-scroll-text" id="clue-scroll-text"></div>
+      </div>
+      <div class="clue-scroll-fade" id="clue-scroll-fade"></div>
+    </div>
+
     <!-- Accusation hint -->
     <p id="accusation-hint" class="dim text-sm mb-16"></p>
 
-    <!-- All players' cards grid -->
-    <div id="cards-grid" class="cards-grid"></div>
+    <!-- Table layout — physical cards per player -->
+    <div id="cards-grid" class="table-layout"></div>
 
-    <!-- Accusation form (shown on card click) -->
+    <!-- Accusation form -->
     <div id="accusation-panel" class="hidden"></div>
 
   </div>
